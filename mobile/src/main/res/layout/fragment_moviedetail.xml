@@ -56,6 +56,7 @@
             android:id="@+id/subtitles"
             android:layout_width="match_parent"
             android:layout_height="56dp"
+            android:visibility="gone"
             app:optionIcon="@drawable/ic_av_subs"
             app:optionText="@string/subtitles" />
 
@@ -65,6 +66,7 @@
             android:layout_height="1dp"
             android:layout_marginLeft="48dp"
             android:layout_marginStart="48dp"
+            android:visibility="gone"
             android:background="@color/div_white" />
 
         <pct.droid.widget.OptionSelector

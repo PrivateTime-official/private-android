@@ -123,6 +123,7 @@ public class PreferencesActivity extends PopcornBaseActivity
 
         final String[] items = {getString(R.string.title_movies), getString(R.string.title_shows), getString(R.string.title_anime)};
         final String[] qualities = getResources().getStringArray(R.array.video_qualities);
+        /*
         mPrefItems.add(new PrefItem(this, R.drawable.ic_prefs_default_view, R.string.default_view, Prefs.DEFAULT_VIEW, 0,
                 new PrefItem.OnClickListener() {
                     @Override
@@ -143,6 +144,7 @@ public class PreferencesActivity extends PopcornBaseActivity
                         return items[(Integer) item.getValue()];
                     }
                 }));
+        */
 
         mPrefItems.add(new PrefItem(this, R.drawable.ic_prefs_default_player, R.string.default_player, Prefs.DEFAULT_PLAYER, "",
                 new PrefItem.OnClickListener() {
@@ -272,6 +274,7 @@ public class PreferencesActivity extends PopcornBaseActivity
                     }
                 }));
 
+        /*
         mPrefItems.add(getResources().getString(R.string.subtitles));
 
         mPrefItems.add(new PrefItem(this, R.drawable.ic_prefs_subtitle_color, R.string.subtitle_color, Prefs.SUBTITLE_COLOR, Color.WHITE,
@@ -421,6 +424,7 @@ public class PreferencesActivity extends PopcornBaseActivity
                         return locale.getDisplayName(locale);
                     }
                 }));
+        */
 
         mPrefItems.add(getResources().getString(R.string.torrents));
 

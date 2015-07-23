@@ -1,7 +1,7 @@
 /*
- * This file is part of Popcorn Time.
+ * This file is part of Private Time.
  *
- * Popcorn Time is free software: you can redistribute it and/or modify
+ * Private Time is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
@@ -12,7 +12,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with Popcorn Time. If not, see <http://www.gnu.org/licenses/>.
+ * along with Private Time. If not, see <http://www.gnu.org/licenses/>.
  */
 
 package pct.droid.base.providers.media;
@@ -37,25 +37,21 @@ import java.net.SocketException;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import pct.droid.base.PopcornApplication;
 import pct.droid.base.R;
 import pct.droid.base.providers.media.models.Genre;
 import pct.droid.base.providers.media.models.Media;
 import pct.droid.base.providers.media.models.Movie;
-import pct.droid.base.providers.meta.MetaProvider;
-import pct.droid.base.providers.meta.TraktProvider;
 import pct.droid.base.providers.subs.SubsProvider;
 import pct.droid.base.providers.subs.YSubsProvider;
 import pct.droid.base.utils.LocaleUtils;
 
-public class YTSProvider extends MediaProvider {
+public class PrivateProvider extends MediaProvider {
 
-    private static final YTSProvider sMediaProvider = new YTSProvider();
-    private static final String API_URL = "http://cloudflare.com/api/v2/";
-    private static final String MIRROR_URL = "http://reddit.com/api/v2/";
-    private static final String MIRROR_URL2 = "http://xor.image.yt/api/v2/";
-    public static String CURRENT_URL = API_URL;
+    private static final PrivateProvider sMediaProvider = new PrivateProvider();
+    public static String CURRENT_URL = "http://api.apiprivatetorrents.com/movies";
 
     private static final SubsProvider sSubsProvider = new YSubsProvider();
     private static Filters sFilters = new Filters();
@@ -104,7 +100,7 @@ public class YTSProvider extends MediaProvider {
         }
 
         if (filters.keywords != null) {
-            params.add(new NameValuePair("query_term", filters.keywords));
+            params.add(new NameValuePair("keywords", filters.keywords));
         }
 
         if (filters.genre != null) {
@@ -117,31 +113,24 @@ public class YTSProvider extends MediaProvider {
             params.add(new NameValuePair("order_by", "desc"));
         }
 
-        if(filters.langCode != null) {
-            params.add(new NameValuePair("lang", filters.langCode));
-        }
-
         String sort;
         switch (filters.sort) {
             default:
             case POPULARITY:
-                sort = "seeds";
+                sort = "popularity";
                 break;
             case YEAR:
                 sort = "year";
                 break;
             case DATE:
-                sort = "date_added";
+                sort = "dateadded";
                 break;
             case RATING:
                 sort = "rating";
                 break;
-            case ALPHABET:
-                sort = "title";
-                break;
         }
 
-        params.add(new NameValuePair("sort_by", sort));
+        params.add(new NameValuePair("sort", sort));
 
         if (filters.page != null) {
             params.add(new NameValuePair("page", Integer.toString(filters.page)));
@@ -149,7 +138,7 @@ public class YTSProvider extends MediaProvider {
 
         Request.Builder requestBuilder = new Request.Builder();
         String query = buildQuery(params);
-        requestBuilder.url(CURRENT_URL + "list_movies_pct.json?" + query);
+        requestBuilder.url(CURRENT_URL + "?" + query);
         requestBuilder.tag(MEDIA_CALL);
 
         return fetchList(currentList, requestBuilder, filters, callback);
@@ -164,15 +153,10 @@ public class YTSProvider extends MediaProvider {
      * @return Call
      */
     private Call fetchList(final ArrayList<Media> currentList, final Request.Builder requestBuilder, final Filters filters, final Callback callback) {
-        requestBuilder.addHeader("Host", "xor.image.yt");
         return enqueue(requestBuilder.build(), new com.squareup.okhttp.Callback() {
             @Override
             public void onFailure(Request request, IOException e) {
-                if (generateFallback(requestBuilder)) {
-                    fetchList(currentList, requestBuilder, filters, callback);
-                } else {
-                    callback.onFailure(e);
-                }
+                callback.onFailure(e);
             }
 
             @Override
@@ -199,7 +183,7 @@ public class YTSProvider extends MediaProvider {
 
                     if (result.status != null && result.status.equals("error")) {
                         callback.onFailure(new NetworkErrorException(result.status_message));
-                    } else if(result.data != null && ((result.data.get("movies") != null && ((ArrayList<LinkedTreeMap<String, Object>>)result.data.get("movies")).size() <= 0) || ((Double)result.data.get("movie_count")).intValue() <= currentList.size())) {
+                    } else if(result.data != null && ((result.data.get("movies") != null && ((ArrayList<LinkedTreeMap<String, Object>>)result.data.get("movies")).size() <= 0) || Integer.parseInt((String)result.data.get("movie_count")) <= currentList.size())) {
                         callback.onFailure(new NetworkErrorException("No movies found"));
                     } else {
                         ArrayList<Media> formattedData = result.formatForPopcorn(currentList);
@@ -218,21 +202,6 @@ public class YTSProvider extends MediaProvider {
         returnList.add(currentList.get(index));
         callback.onSuccess(null, returnList, true);
         return null;
-    }
-
-    private boolean generateFallback(Request.Builder requestBuilder) {
-        String url = requestBuilder.build().urlString();
-        if (url.contains(MIRROR_URL2)) {
-            return false;
-        } else if (url.contains(MIRROR_URL)) {
-            url = url.replace(MIRROR_URL, MIRROR_URL2);
-            CURRENT_URL = MIRROR_URL2;
-        } else {
-            url = url.replace(API_URL, MIRROR_URL);
-            CURRENT_URL = MIRROR_URL;
-        }
-        requestBuilder.url(url);
-        return true;
     }
 
     private class YTSReponse {
@@ -271,7 +240,7 @@ public class YTSProvider extends MediaProvider {
             for (LinkedTreeMap<String, Object> item : movies) {
                 Movie movie = new Movie(sMediaProvider, sSubsProvider);
 
-                movie.videoId = (String) item.get("imdb_code");
+                movie.videoId = (String) item.get("id");
                 movie.imdbId = movie.videoId;
 
                 int existingItem = isInResults(existingList, movie.videoId);
@@ -279,28 +248,29 @@ public class YTSProvider extends MediaProvider {
                     movie.title = (String) item.get("title");
                     Double year = (Double) item.get("year");
                     movie.year = Integer.toString(year.intValue());
-                    movie.rating = item.get("rating").toString();
+                    Double rating = (Double) item.get("rating");
+                    rating = rating * 2;
+                    movie.rating = rating.toString();
                     movie.genre = ((ArrayList<String>) item.get("genres")).get(0);
-                    movie.image = (String) item.get("large_cover_image");
-                    movie.headerImage = (String) item.get("background_image_original");
-                    movie.trailer = "https://youtube.com/watch?v=" + item.get("yt_trailer_code");
-                    Double runtime = (Double) item.get("runtime");
-                    movie.runtime = Integer.toString(runtime.intValue());
-                    movie.synopsis = (String) item.get("description_full");
-                    movie.certification = (String) item.get("mpa_rating");
+                    Map<String, Object> images = (Map<String, Object>) item.get("images");
+                    movie.image = (String) images.get("posterBig");
+                    movie.headerImage = ((ArrayList<String>)images.get("backdrops")).get(0);
                     movie.fullImage = movie.image;
+                    movie.runtime = (String) item.get("runtime");
+                    movie.synopsis = (String) item.get("synopsis");
+                    movie.certification = "NC-17";
 
                     ArrayList<LinkedTreeMap<String, Object>> torrents =
                             (ArrayList<LinkedTreeMap<String, Object>>) item.get("torrents");
                     if (torrents != null) {
                         for (LinkedTreeMap<String, Object> torrentObj : torrents) {
                             String quality = (String) torrentObj.get("quality");
-                            if (quality == null || quality.equals("3D")) continue;
+                            if (quality == null) continue;
 
                             Media.Torrent torrent = new Media.Torrent();
 
-                            torrent.seeds = ((Double) torrentObj.get("seeds")).intValue();
-                            torrent.peers = ((Double) torrentObj.get("peers")).intValue();
+                            torrent.seeds = ((Double) torrentObj.get("seed")).intValue();
+                            torrent.peers = ((Double) torrentObj.get("peer")).intValue();
                             torrent.hash = (String) torrentObj.get("hash");
                             try {
                                 torrent.url = "magnet:?xt=urn:btih:" + torrent.hash + "&amp;dn=" + URLEncoder.encode(item.get("title").toString(), "utf-8") + "&amp;tr=http://exodus.desync.com:6969/announce&amp;tr=udp://tracker.openbittorrent.com:80/announce&amp;tr=udp://open.demonii.com:1337/announce&amp;tr=udp://exodus.desync.com:6969/announce&amp;tr=udp://tracker.yify-torrents.com/announce";
@@ -328,12 +298,10 @@ public class YTSProvider extends MediaProvider {
     @Override
     public List<NavInfo> getNavigation() {
         List<NavInfo> tabs = new ArrayList<>();
-        tabs.add(new NavInfo(Filters.Sort.TRENDING, Filters.Order.DESC, PopcornApplication.getAppContext().getString(R.string.trending)));
         tabs.add(new NavInfo(Filters.Sort.POPULARITY, Filters.Order.DESC, PopcornApplication.getAppContext().getString(R.string.popular)));
         tabs.add(new NavInfo(Filters.Sort.RATING, Filters.Order.DESC, PopcornApplication.getAppContext().getString(R.string.top_rated)));
         tabs.add(new NavInfo(Filters.Sort.DATE, Filters.Order.DESC, PopcornApplication.getAppContext().getString(R.string.release_date)));
         tabs.add(new NavInfo(Filters.Sort.YEAR, Filters.Order.DESC, PopcornApplication.getAppContext().getString(R.string.year)));
-        tabs.add(new NavInfo(Filters.Sort.ALPHABET, Filters.Order.ASC, PopcornApplication.getAppContext().getString(R.string.a_to_z)));
         return tabs;
     }
 
@@ -341,29 +309,122 @@ public class YTSProvider extends MediaProvider {
     public List<Genre> getGenres() {
         List<Genre> returnList = new ArrayList<>();
         returnList.add(new Genre(null, R.string.genre_all));
-        returnList.add(new Genre("action", R.string.genre_action));
-        returnList.add(new Genre("adventure", R.string.genre_adventure));
-        returnList.add(new Genre("animation", R.string.genre_animation));
-        returnList.add(new Genre("biography", R.string.genre_biography));
-        returnList.add(new Genre("comedy", R.string.genre_comedy));
-        returnList.add(new Genre("crime", R.string.genre_crime));
-        returnList.add(new Genre("documentary", R.string.genre_documentary));
-        returnList.add(new Genre("drama", R.string.genre_drama));
-        returnList.add(new Genre("family", R.string.genre_family));
-        returnList.add(new Genre("fantasy", R.string.genre_fantasy));
-        returnList.add(new Genre("filmnoir", R.string.genre_film_noir));
-        returnList.add(new Genre("history", R.string.genre_history));
-        returnList.add(new Genre("horror", R.string.genre_horror));
-        returnList.add(new Genre("music", R.string.genre_music));
-        returnList.add(new Genre("musical", R.string.genre_musical));
-        returnList.add(new Genre("mystery", R.string.genre_mystery));
-        returnList.add(new Genre("romance", R.string.genre_romance));
-        returnList.add(new Genre("scifi", R.string.genre_sci_fi));
-        returnList.add(new Genre("short", R.string.genre_short));
-        returnList.add(new Genre("sport", R.string.genre_sport));
-        returnList.add(new Genre("thriller", R.string.genre_thriller));
-        returnList.add(new Genre("war", R.string.genre_war));
-        returnList.add(new Genre("western", R.string.genre_western));
+        returnList.add(new Genre("2", "18+ Teens"));
+        returnList.add(new Genre("3", "'Threesomes'"));
+        returnList.add(new Genre("5", "69"));
+        returnList.add(new Genre("6", "Action"));
+        returnList.add(new Genre("7", "Affair"));
+        returnList.add(new Genre("8", "All Girl"));
+        returnList.add(new Genre("9", "All Sex"));
+        returnList.add(new Genre("10", "Amateur"));
+        returnList.add(new Genre("11", "Barebacking"));
+        returnList.add(new Genre("12", "Anal"));
+        returnList.add(new Genre("13", "Ass to Mouth"));
+        returnList.add(new Genre("14", "Athletic Body"));
+        returnList.add(new Genre("15", "Babysitter"));
+        returnList.add(new Genre("16", "Ball licking"));
+        returnList.add(new Genre("17", "BGG"));
+        returnList.add(new Genre("18", "Big Butts"));
+        returnList.add(new Genre("19", "Big Boobs"));
+        returnList.add(new Genre("20", "Big Budget"));
+        returnList.add(new Genre("21", "Big Cocks"));
+        returnList.add(new Genre("22", "Big Dick"));
+        returnList.add(new Genre("23", "Big Fake Boobs"));
+        returnList.add(new Genre("24", "Bikini Babes"));
+        returnList.add(new Genre("25", "Black"));
+        returnList.add(new Genre("26", "Brunette"));
+        returnList.add(new Genre("27", "Blonde"));
+        returnList.add(new Genre("28", "Blow Job"));
+        returnList.add(new Genre("29", "Blu-Ray"));
+        returnList.add(new Genre("30", "Blue Eyes"));
+        returnList.add(new Genre("31", "Brown Eyes"));
+        returnList.add(new Genre("32", "Bubble Butt"));
+        returnList.add(new Genre("33", "Caucasian"));
+        returnList.add(new Genre("34", "Celebrity"));
+        returnList.add(new Genre("35", "Chubby"));
+        returnList.add(new Genre("36", "Classic"));
+        returnList.add(new Genre("37", "College"));
+        returnList.add(new Genre("38", "Comedy"));
+        returnList.add(new Genre("39", "Compilation"));
+        returnList.add(new Genre("40", "Costumes"));
+        returnList.add(new Genre("41", "Couples"));
+        returnList.add(new Genre("42", "Cream Pie"));
+        returnList.add(new Genre("43", "Cumshots"));
+        returnList.add(new Genre("44", "Curvy Woman"));
+        returnList.add(new Genre("45", "Deep Throat"));
+        returnList.add(new Genre("46", "Domination"));
+        returnList.add(new Genre("47", "Double Penetration"));
+        returnList.add(new Genre("48", "Vignette"));
+        returnList.add(new Genre("49", "European"));
+        returnList.add(new Genre("50", "Facial"));
+        returnList.add(new Genre("51", "Fake Boobs"));
+        returnList.add(new Genre("52", "Family Roleplay"));
+        returnList.add(new Genre("53", "Feature"));
+        returnList.add(new Genre("54", "Fetish"));
+        returnList.add(new Genre("55", "First Anal"));
+        returnList.add(new Genre("56", "First Double Penetration"));
+        returnList.add(new Genre("57", "First Interracial"));
+        returnList.add(new Genre("58", "Fishnet"));
+        returnList.add(new Genre("59", "Foot"));
+        returnList.add(new Genre("60", "Foreign"));
+        returnList.add(new Genre("61", "Gangbang"));
+        returnList.add(new Genre("62", "Gaping"));
+        returnList.add(new Genre("63", "Gonzo"));
+        returnList.add(new Genre("64", "Green Eyes"));
+        returnList.add(new Genre("65", "Group Sex"));
+        returnList.add(new Genre("66", "Hairy"));
+        returnList.add(new Genre("67", "Halloween"));
+        returnList.add(new Genre("68", "Hand Job"));
+        returnList.add(new Genre("69", "Hazel Eyes"));
+        returnList.add(new Genre("70", "High Definition"));
+        returnList.add(new Genre("71", "High Heels"));
+        returnList.add(new Genre("72", "Home Made Movies"));
+        returnList.add(new Genre("73", "Indian"));
+        returnList.add(new Genre("74", "Innie Pussy"));
+        returnList.add(new Genre("75", "Interactive Sex"));
+        returnList.add(new Genre("76", "Interracial"));
+        returnList.add(new Genre("77", "Latin"));
+        returnList.add(new Genre("78", "Lingerie"));
+        returnList.add(new Genre("79", "Made For Women"));
+        returnList.add(new Genre("80", "Massage"));
+        returnList.add(new Genre("81", "Masturbation"));
+        returnList.add(new Genre("82", "Mature"));
+        returnList.add(new Genre("83", "Medium Ass"));
+        returnList.add(new Genre("84", "Natural Tits"));
+        returnList.add(new Genre("85", "Medium Tits"));
+        returnList.add(new Genre("86", "MILF"));
+        returnList.add(new Genre("87", "Military"));
+        returnList.add(new Genre("88", "Mystery"));
+        returnList.add(new Genre("89", "Nurses & Doctors"));
+        returnList.add(new Genre("90", "Office"));
+        returnList.add(new Genre("91", "Oiled"));
+        returnList.add(new Genre("92", "Older Men"));
+        returnList.add(new Genre("93", "Oral"));
+        returnList.add(new Genre("94", "Orgy"));
+        returnList.add(new Genre("95", "Outie Pussy"));
+        returnList.add(new Genre("96", "P.O.V."));
+        returnList.add(new Genre("97", "Stockings & Pantyhose"));
+        returnList.add(new Genre("98", "Parody"));
+        returnList.add(new Genre("99", "Petite"));
+        returnList.add(new Genre("100", "Piercings"));
+        returnList.add(new Genre("101", "Prison Chicks"));
+        returnList.add(new Genre("102", "Redhead"));
+        returnList.add(new Genre("103", "Romance"));
+        returnList.add(new Genre("104", "Science Fiction"));
+        returnList.add(new Genre("105", "Shaved"));
+        returnList.add(new Genre("106", "Small Boobs"));
+        returnList.add(new Genre("107", "Secret Agents"));
+        returnList.add(new Genre("108", "Squirting"));
+        returnList.add(new Genre("109", "Star showcase"));
+        returnList.add(new Genre("110", "Strap-Ons"));
+        returnList.add(new Genre("111", "Summer"));
+        returnList.add(new Genre("112", "Tattoos"));
+        returnList.add(new Genre("113", "Teachers"));
+        returnList.add(new Genre("114", "Titty Fucking"));
+        returnList.add(new Genre("115", "Transsexual"));
+        returnList.add(new Genre("116", "Voluptuous"));
+        returnList.add(new Genre("117", "Voyeurism"));
+        returnList.add(new Genre("118", "Wives"));
         return returnList;
     }
 

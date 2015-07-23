@@ -18,12 +18,20 @@
 package pct.droid.base.providers.media.models;
 
 
+import pct.droid.base.PopcornApplication;
+
 public class Genre {
 
-    private String mKey;
-    private int mLabel;
+    private String mKey, mLabel;
+    private int mLabelId;
 
     public Genre(String key, int label) {
+        mKey = key;
+        mLabelId = label;
+        mLabel = PopcornApplication.getAppContext().getString(label);
+    }
+
+    public Genre(String key, String label) {
         mKey = key;
         mLabel = label;
     }
@@ -33,6 +41,10 @@ public class Genre {
     }
 
     public int getLabelId() {
+        return mLabelId;
+    }
+
+    public String getLabel() {
         return mLabel;
     }
 

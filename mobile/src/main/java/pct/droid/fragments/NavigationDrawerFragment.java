@@ -41,10 +41,8 @@ import pct.droid.activities.PreferencesActivity;
 import pct.droid.adapters.NavigationAdapter;
 import pct.droid.adapters.decorators.OneShotDividerDecorator;
 import pct.droid.base.preferences.Prefs;
-import pct.droid.base.providers.media.EZTVProvider;
-import pct.droid.base.providers.media.HaruProvider;
 import pct.droid.base.providers.media.MediaProvider;
-import pct.droid.base.providers.media.YTSProvider;
+import pct.droid.base.providers.media.PrivateProvider;
 import pct.droid.base.utils.PrefUtils;
 import pct.droid.base.vpn.VPNHTChecker;
 import pct.droid.base.vpn.VPNManager;
@@ -136,7 +134,7 @@ public class NavigationDrawerFragment extends Fragment implements NavigationAdap
         mAdapter = new NavigationAdapter(getActivity(), this, initItems());
         mAdapter.setOnItemClickListener(mOnItemClickListener);
 
-        mRecyclerView.addItemDecoration(new OneShotDividerDecorator(getActivity(), 3));
+        mRecyclerView.addItemDecoration(new OneShotDividerDecorator(getActivity(), 1));
         mRecyclerView.setHasFixedSize(true);
         mRecyclerView.setAdapter(mAdapter);
         mRecyclerView.requestFocus();
@@ -146,9 +144,7 @@ public class NavigationDrawerFragment extends Fragment implements NavigationAdap
         //todo: make list items dynamic
         List<NavDrawerItem> navItems = new ArrayList<>();
         navItems.add(new NavDrawerItem(true));
-        navItems.add(new NavDrawerItem(getString(R.string.title_movies), R.drawable.ic_nav_movies, new YTSProvider()));
-        navItems.add(new NavDrawerItem(getString(R.string.title_shows), R.drawable.ic_nav_tv, new EZTVProvider()));
-        navItems.add(new NavDrawerItem(getString(R.string.title_anime), R.drawable.ic_nav_anime, new HaruProvider()));
+        navItems.add(new NavDrawerItem("TPBM", R.drawable.ic_nav_movies, new PrivateProvider()));
         if(PrefUtils.get(getActivity(), Prefs.SHOW_VPN, true) && VPNHTChecker.isDownloadAvailable(getActivity())) {
             navItems.add(mVPNItem = new NavDrawerItem(getString(R.string.vpn), R.drawable.ic_nav_vpn, mOnVPNClickListener, VPNManager.getLatestInstance().isConnected()));
         }

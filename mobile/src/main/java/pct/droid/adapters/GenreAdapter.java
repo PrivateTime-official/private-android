@@ -106,7 +106,7 @@ public class GenreAdapter extends RecyclerView.Adapter {
             mSelectedItem = viewHolder.itemView;
 
         viewHolder.itemView.setBackgroundColor(mSelectedPos == position ? mSelectedColor : mNormalColor);
-        viewHolder.text1.setText(getItem(position).getLabelId());
+        viewHolder.text1.setText(getItem(position).getLabel());
     }
 
     @Override
